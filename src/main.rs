@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use ldap_commands::search;
 
 /// A CLI for interacting with an LDAP server.
 #[derive(Debug, Parser)]
@@ -44,7 +45,8 @@ enum ServerCommand {
     Use { name: String },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     match cli.cmd {
         Some(cmd) => match cmd {
@@ -56,7 +58,7 @@ fn main() {
             }
         },
         None => {
-            println!("No subcommand used")
+            search(cli.filter, cli.attrs).await.unwrap();
         }
     }
 }

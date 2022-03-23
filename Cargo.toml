@@ -9,5 +9,12 @@ edition = "2021"
 name = "ldap"
 path = "src/main.rs"
 
+[lib]
+name = "ldap_commands"
+path = "src/lib.rs"
+
 [dependencies]
 clap = {version = "3.1.6", features = ["derive"]}
+itertools = "0.10.3"
+ldap3 = {version = "0.10.2", default-features = false, features = ["tls-rustls"]}
+tokio = {version = "1.17.0", features = ["rt-multi-thread"]}
