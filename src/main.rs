@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use color_eyre::eyre::Result;
 use ldap_commands::search;
 
 /// A CLI for interacting with an LDAP server.
@@ -46,19 +47,20 @@ enum ServerCommand {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
+    color_eyre::install()?;
     let cli = Cli::parse();
     match cli.cmd {
         Some(cmd) => match cmd {
             Command::Server { cmd: subcmd } => {
                 println!("Run session to {subcmd:?} a server");
+                Ok(())
             }
             Command::Modify { attr, value, dn: _ } => {
                 println!("Modify attribute '{attr}' to be {value:?}");
+                Ok(())
             }
         },
-        None => {
-            search(cli.filter, cli.attrs).await.unwrap();
-        }
+        None => search(cli.filter, cli.attrs).await,
     }
 }

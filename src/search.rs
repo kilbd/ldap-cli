@@ -1,17 +1,13 @@
 use crate::server_connection;
+use color_eyre::{
+    eyre::{eyre, Result},
+    owo_colors::OwoColorize,
+};
 use itertools::Itertools;
-use ldap3::result::Result;
 use ldap3::{Scope, SearchEntry};
 
 pub async fn search(filter: Option<String>, attributes: Option<String>) -> Result<()> {
-    let query: String;
-    match filter {
-        Some(q) => query = q,
-        None => {
-            println!("Unable to search without an LDAP filter.");
-            return Ok(());
-        }
-    }
+    let query = filter.ok_or_else(|| eyre!("Unable to search without an LDAP filter."))?;
     let attrs: Vec<&str>;
     match attributes.as_ref() {
         Some(list) => attrs = list.split(",").collect::<Vec<&str>>(),
@@ -24,10 +20,10 @@ pub async fn search(filter: Option<String>, attributes: Option<String>) -> Resul
         .success()?;
     for entry in rs {
         let result = SearchEntry::construct(entry);
-        println!("dn: {}", result.dn);
+        println!("{} {}", "dn:".green().bold(), result.dn);
         for (key, vals) in result.attrs.iter().sorted() {
             for val in vals {
-                println!("{key}: {val}");
+                println!("{} {val}", format!("{key}:").cyan().bold());
             }
         }
     }
