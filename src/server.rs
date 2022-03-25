@@ -65,11 +65,23 @@ pub fn add(name: String) -> Result<()> {
     config.servers.push(server_config);
     config.servers.sort_by(|a, b| a.name.cmp(&b.name));
     config.current = name.clone();
-    let new_contents = serde_json::to_string_pretty(&config)
-        .wrap_err("Unable to save configuration. Please try again.")?;
-    let path = config_path()?;
-    fs::write(path, new_contents).wrap_err("Unable to save new server. Please try again.")?;
-    println!("Switched to new server '{}'", name.green().bold());
+    save_config(&config)?;
+    println!("Switched to new server '{}'.", name.green().bold());
+    Ok(())
+}
+
+pub fn switch_to(name: String) -> Result<()> {
+    let mut config = load_config()?;
+    if !config.servers.iter().any(|item| item.name == name) {
+        return Err(
+            eyre!("Unable to find the requested server configuration. Check the name in `{}` or add with `{}`.",
+            "ldap server list".green().bold(),
+            "ldap server add".green().bold())
+        );
+    }
+    config.current = name.clone();
+    save_config(&config)?;
+    println!("Switched to server '{}'.", name.green().bold());
     Ok(())
 }
 
@@ -88,6 +100,13 @@ fn load_config() -> Result<Config> {
     serde_json::from_str(contents.as_ref()).wrap_err("Unable to parse JSON in config.")
 }
 
+fn save_config(config: &Config) -> Result<()> {
+    let new_contents = serde_json::to_string_pretty(config)
+        .wrap_err("Unable to save configuration. Please try again.")?;
+    let path = config_path()?;
+    fs::write(path, new_contents).wrap_err("Unable to save new server. Please try again.")
+}
+
 fn current_config() -> Result<ServerConfig> {
     let full_config = load_config()?;
     Ok(full_config
@@ -101,7 +120,7 @@ fn current_config() -> Result<ServerConfig> {
         .clone())
 }
 
-fn prompt_for_details(name: &String) -> Result<ServerConfig> {
+fn prompt_for_details(name: &str) -> Result<ServerConfig> {
     let host = rprompt::prompt_reply_stderr(&format!(
         "\
 Please specify the following details for server connections:
@@ -142,7 +161,7 @@ Please specify the following details for server connections:
     .wrap_err("Failed to get search base")?;
     Ok(ServerConfig {
         host,
-        name: name.clone(),
+        name: name.to_string(),
         password: pw,
         port,
         search_base: base,

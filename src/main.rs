@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
                 ServerCommand::Add { name } => server::add(name),
                 ServerCommand::Edit => Ok(()),
                 ServerCommand::List => server::list(),
-                ServerCommand::Use { name: _ } => Ok(()),
+                ServerCommand::Use { name } => server::switch_to(name),
             },
             Command::Modify { attr, value, dn: _ } => {
                 println!("Modify attribute '{attr}' to be {value:?}");
