@@ -41,25 +41,42 @@ pub async fn server_connection() -> Result<(Ldap, String)> {
     Ok((ldap, config.search_base))
 }
 
+pub fn list() -> Result<()> {
+    let config = load_config()?;
+    for server in config.servers.iter() {
+        if server.name == config.current {
+            println!("{}", format!("* {}", server.name).green().bold());
+        } else {
+            println!("  {}", server.name);
+        }
+    }
+    Ok(())
+}
+
 fn config_path() -> Result<PathBuf> {
     let user_dirs =
         UserDirs::new().ok_or_else(|| eyre!("Could not find a home directory for you."))?;
     Ok(user_dirs.home_dir().join(".ldap").join("config"))
 }
 
-fn current_config() -> Result<ServerConfig> {
+fn load_config() -> Result<Config> {
     let path = config_path()?;
     let contents = fs::read_to_string(path).wrap_err(format!(
         "Unable to read config file. Have you added a server with `{}`?",
         "ldap server add".green().bold()
     ))?;
-    let full_config: Config =
-        serde_json::from_str(contents.as_ref()).wrap_err("Unable to parse JSON in config.")?;
+    serde_json::from_str(contents.as_ref()).wrap_err("Unable to parse JSON in config.")
+}
+
+fn current_config() -> Result<ServerConfig> {
+    let full_config = load_config()?;
     Ok(full_config
         .servers
         .iter()
         .find(|item| item.name == full_config.current)
-        .ok_or_else(|| eyre!("Could not find the server configuration to use. You may need to add a config with `{}` or select a different one with `{}`",
-            "ldap server add".green().bold(), "ldap server use".green().bold()))?
+        .ok_or_else(|| eyre!(
+            "Could not find the server configuration to use. You may need to add a config with `{}` or select a different one with `{}`",
+            "ldap server add".green().bold(),
+            "ldap server use".green().bold()))?
         .clone())
 }

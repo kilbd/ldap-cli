@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use ldap_commands::search;
+use ldap_commands::{search, server};
 
 /// A CLI for interacting with an LDAP server.
 #[derive(Debug, Parser)]
@@ -52,10 +52,12 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
         Some(cmd) => match cmd {
-            Command::Server { cmd: subcmd } => {
-                println!("Run session to {subcmd:?} a server");
-                Ok(())
-            }
+            Command::Server { cmd: subcmd } => match subcmd {
+                ServerCommand::Add => Ok(()),
+                ServerCommand::Edit => Ok(()),
+                ServerCommand::List => server::list(),
+                ServerCommand::Use { name: _ } => Ok(()),
+            },
             Command::Modify { attr, value, dn: _ } => {
                 println!("Modify attribute '{attr}' to be {value:?}");
                 Ok(())

@@ -1,4 +1,4 @@
-use crate::server_connection;
+use crate::server::server_connection;
 use color_eyre::{
     eyre::{eyre, Result},
     owo_colors::OwoColorize,
