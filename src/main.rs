@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use ldap_commands::{search, server};
+use ldap_commands::{search, search::Output, server};
 
 /// A CLI for interacting with an LDAP server.
 #[derive(Debug, Parser)]
@@ -13,6 +13,9 @@ struct Cli {
     attrs: Option<String>,
     /// QUOTED string to use for LDAP filter in a search
     filter: Option<String>,
+    /// Format for search output
+    #[clap(long, short, arg_enum)]
+    format: Option<Output>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -72,6 +75,6 @@ async fn main() -> Result<()> {
                 Ok(())
             }
         },
-        None => search(cli.filter, cli.attrs).await,
+        None => search(cli.filter, cli.attrs, cli.format).await,
     }
 }
