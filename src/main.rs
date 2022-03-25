@@ -37,13 +37,19 @@ enum Command {
 #[derive(Debug, Subcommand)]
 enum ServerCommand {
     /// Add new credentials for authenticating to a server
-    Add,
+    Add {
+        /// A name to use when referring to the new configuration
+        name: String,
+    },
     /// Modify an existing server configuration
     Edit,
     /// List configured servers
     List,
     /// Switch to using specified server for commands
-    Use { name: String },
+    Use {
+        /// The name of a saved configuration, as seen in `ldap server list`
+        name: String,
+    },
 }
 
 #[tokio::main]
@@ -53,7 +59,7 @@ async fn main() -> Result<()> {
     match cli.cmd {
         Some(cmd) => match cmd {
             Command::Server { cmd: subcmd } => match subcmd {
-                ServerCommand::Add => Ok(()),
+                ServerCommand::Add { name } => server::add(name),
                 ServerCommand::Edit => Ok(()),
                 ServerCommand::List => server::list(),
                 ServerCommand::Use { name: _ } => Ok(()),

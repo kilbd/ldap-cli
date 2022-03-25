@@ -4,17 +4,17 @@ use color_eyre::{
 };
 use directories::UserDirs;
 use ldap3::{Ldap, LdapConnAsync};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Config {
     current: String,
     servers: Vec<ServerConfig>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct ServerConfig {
     host: String,
     name: String,
@@ -53,6 +53,26 @@ pub fn list() -> Result<()> {
     Ok(())
 }
 
+pub fn add(name: String) -> Result<()> {
+    let mut config = load_config()?;
+    if config.servers.iter().any(|item| item.name == name) {
+        return Err(eyre!(
+            "You already saved a server named '{}'. Please choose a different name.",
+            name.green()
+        ));
+    }
+    let server_config = prompt_for_details(&name)?;
+    config.servers.push(server_config);
+    config.servers.sort_by(|a, b| a.name.cmp(&b.name));
+    config.current = name.clone();
+    let new_contents = serde_json::to_string_pretty(&config)
+        .wrap_err("Unable to save configuration. Please try again.")?;
+    let path = config_path()?;
+    fs::write(path, new_contents).wrap_err("Unable to save new server. Please try again.")?;
+    println!("Switched to new server '{}'", name.green().bold());
+    Ok(())
+}
+
 fn config_path() -> Result<PathBuf> {
     let user_dirs =
         UserDirs::new().ok_or_else(|| eyre!("Could not find a home directory for you."))?;
@@ -79,4 +99,53 @@ fn current_config() -> Result<ServerConfig> {
             "ldap server add".green().bold(),
             "ldap server use".green().bold()))?
         .clone())
+}
+
+fn prompt_for_details(name: &String) -> Result<ServerConfig> {
+    let host = rprompt::prompt_reply_stderr(&format!(
+        "\
+Please specify the following details for server connections:
+{} (example: ldap.example.com)
+>",
+        "Host".blue().bold()
+    ))
+    .wrap_err("Failed to get host location")?;
+    let port = rprompt::prompt_reply_stderr(&format!(
+        "\
+{} (example: 636)
+>",
+        "Port".blue().bold()
+    ))
+    .wrap_err("Failed to get port")?
+    .parse::<u32>()
+    .wrap_err("Please enter a number for the port")?;
+    let user = rprompt::prompt_reply_stderr(&format!(
+        "\
+{} (example: cn=Me,ou=Admin,o=MyOrg,c=US)
+>",
+        "Bind DN".blue().bold()
+    ))
+    .wrap_err("Failed to get bind DN")?;
+    let pw = rpassword::prompt_password(format!(
+        "\
+{}
+>",
+        "Password".blue().bold()
+    ))
+    .wrap_err("Failed to get password")?;
+    let base = rprompt::prompt_reply_stderr(&format!(
+        "\
+{} (example: o=MyOrg,c=US)
+>",
+        "Search Base".blue().bold()
+    ))
+    .wrap_err("Failed to get search base")?;
+    Ok(ServerConfig {
+        host,
+        name: name.clone(),
+        password: pw,
+        port,
+        search_base: base,
+        user,
+    })
 }
