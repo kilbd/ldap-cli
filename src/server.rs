@@ -70,6 +70,53 @@ pub fn add(name: String) -> Result<()> {
     Ok(())
 }
 
+pub fn rm(name: String) -> Result<()> {
+    let mut config = load_config()?;
+    let index = config
+        .servers
+        .iter()
+        .position(|item| item.name == name)
+        .ok_or_else(|| {
+            eyre!(
+                "Unable to find the requested server configuration. Check the name in `{}`.",
+                "ldap server list".green().bold(),
+            )
+        })?;
+    let confirm = rprompt::prompt_reply_stderr(&format!(
+        "\
+{}{}{} (y/n)
+>",
+        "Are you sure you wish to remove the ".red(),
+        name.green().bold(),
+        " server configuration?".red(),
+    ))
+    .wrap_err("Failed to get confirmation for removal")?;
+    match confirm.to_lowercase().as_ref() {
+        "y" => {
+            config.servers.remove(index);
+            println!("Removed server configuration '{}'.", name.green().bold());
+            if config.current == name {
+                if config.servers.len() > 0 {
+                    config.current = config.servers[0].name.clone();
+                    println!(
+                        "Switched to server '{}'.",
+                        config.servers[0].name.green().bold()
+                    );
+                } else {
+                    config.current = String::from("");
+                    println!("There are no more server configurations. Please add one.");
+                }
+            }
+            save_config(&config)?;
+        }
+        "n" => (),
+        _ => {
+            println!("Did not understand your response. Please try again.");
+        }
+    }
+    Ok(())
+}
+
 pub fn switch_to(name: String) -> Result<()> {
     let mut config = load_config()?;
     if !config.servers.iter().any(|item| item.name == name) {

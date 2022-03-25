@@ -41,10 +41,13 @@ enum ServerCommand {
         /// A name to use when referring to the new configuration
         name: String,
     },
-    /// Modify an existing server configuration
-    Edit,
     /// List configured servers
     List,
+    /// Remove an existing server configuration
+    Rm {
+        /// The name of a saved configuration, as seen in `ldap server list`
+        name: String,
+    },
     /// Switch to using specified server for commands
     Use {
         /// The name of a saved configuration, as seen in `ldap server list`
@@ -60,8 +63,8 @@ async fn main() -> Result<()> {
         Some(cmd) => match cmd {
             Command::Server { cmd: subcmd } => match subcmd {
                 ServerCommand::Add { name } => server::add(name),
-                ServerCommand::Edit => Ok(()),
                 ServerCommand::List => server::list(),
+                ServerCommand::Rm { name } => server::rm(name),
                 ServerCommand::Use { name } => server::switch_to(name),
             },
             Command::Modify { attr, value, dn: _ } => {
