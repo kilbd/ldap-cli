@@ -96,7 +96,7 @@ pub fn rm(name: String) -> Result<()> {
             config.servers.remove(index);
             println!("Removed server configuration '{}'.", name.green().bold());
             if config.current == name {
-                if config.servers.len() > 0 {
+                if !config.servers.is_empty() {
                     config.current = config.servers[0].name.clone();
                     println!(
                         "Switched to server '{}'.",

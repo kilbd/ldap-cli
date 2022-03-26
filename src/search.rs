@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use crate::server::server_connection;
 use clap::ArgEnum;
 use color_eyre::{
     eyre::{eyre, Result},
     owo_colors::OwoColorize,
 };
+use csv::Writer;
 use itertools::Itertools;
 use ldap3::{Scope, SearchEntry};
 
@@ -36,7 +39,7 @@ pub async fn search(
     match format {
         Some(fmt) => match fmt {
             Output::Ldif => print_ldif(results),
-            Output::Csv => print_csv(results),
+            Output::Csv => print_csv(results)?,
         },
         None => print_stdout(results),
     }
@@ -69,7 +72,34 @@ fn print_ldif(results: Vec<SearchEntry>) {
             }
         }
     });
-    print!("\n")
+    println!();
 }
 
-fn print_csv(_results: Vec<SearchEntry>) {}
+fn print_csv(results: Vec<SearchEntry>) -> Result<()> {
+    let mut all_attribs = HashSet::new();
+    for result in results.iter() {
+        for key in result.attrs.keys() {
+            all_attribs.insert(key.clone());
+        }
+    }
+    let mut attribs = all_attribs.iter().collect::<Vec<&String>>();
+    attribs.sort();
+    let dn_head = String::from("dn");
+    let mut headers = vec![&dn_head];
+    attribs.iter().for_each(|attr| headers.push(attr));
+    let mut writer = Writer::from_writer(std::io::stdout());
+    writer.write_record(headers)?;
+    for result in results.iter() {
+        let mut row = attribs
+            .iter()
+            .map(|attr| match result.attrs.get(*attr) {
+                Some(val) => val.join(","),
+                None => String::from(""),
+            })
+            .collect::<Vec<String>>();
+        row.insert(0, result.dn.clone());
+        writer.write_record(row)?;
+    }
+    writer.flush()?;
+    Ok(())
+}
