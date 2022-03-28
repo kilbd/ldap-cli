@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use ldap_commands::{search, search::Output, server};
+use ldap_commands::{modify, search, search::Output, server};
 
 /// A CLI for interacting with an LDAP server.
 #[derive(Debug, Parser)]
@@ -34,6 +34,12 @@ enum Command {
         /// New value for attribute (can be used multiple times for multi-value attributes)
         #[clap(long, short)]
         value: Vec<String>,
+        /// Remove an attribute value, or entirely if no value specified
+        #[clap(long)]
+        rm: bool,
+        /// Replace existing values with the specified value(s)
+        #[clap(long)]
+        replace: bool,
     },
 }
 
@@ -70,10 +76,13 @@ async fn main() -> Result<()> {
                 ServerCommand::Rm { name } => server::rm(name),
                 ServerCommand::Use { name } => server::switch_to(name),
             },
-            Command::Modify { attr, value, dn: _ } => {
-                println!("Modify attribute '{attr}' to be {value:?}");
-                Ok(())
-            }
+            Command::Modify {
+                attr,
+                value,
+                dn,
+                rm,
+                replace,
+            } => modify(dn, attr, value, rm, replace).await,
         },
         None => search(cli.filter, cli.attrs, cli.format).await,
     }
