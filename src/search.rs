@@ -28,6 +28,7 @@ pub async fn search(
         None => attrs = vec![],
     }
     let (mut ldap, search_base) = server_connection().await?;
+    let start = std::time::Instant::now();
     let (rs, _res) = ldap
         .search(&search_base, Scope::Subtree, &query, attrs)
         .await?
@@ -41,12 +42,12 @@ pub async fn search(
             Output::Ldif => print_ldif(results),
             Output::Csv => print_csv(results)?,
         },
-        None => print_stdout(results),
+        None => print_stdout(results, start.elapsed().as_secs_f64()),
     }
     Ok(ldap.unbind().await?)
 }
 
-fn print_stdout(results: Vec<SearchEntry>) {
+fn print_stdout(results: Vec<SearchEntry>, time: f64) {
     results.iter().for_each(|result| {
         println!("{} {}", "dn:".green().bold(), result.dn);
         for (key, vals) in result.attrs.iter().sorted() {
@@ -60,7 +61,12 @@ fn print_stdout(results: Vec<SearchEntry>) {
     if results.len() == 1 {
         plural = "y";
     }
-    println!("Found {} entr{}.", results.len(), plural);
+    println!(
+        "Found {} entr{} in {} seconds.",
+        results.len(),
+        plural,
+        time
+    );
 }
 
 fn print_ldif(results: Vec<SearchEntry>) {
