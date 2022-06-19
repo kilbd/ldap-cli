@@ -22,11 +22,10 @@ pub async fn search(
     format: Option<Output>,
 ) -> Result<()> {
     let query = filter.ok_or_else(|| eyre!("Unable to search without an LDAP filter."))?;
-    let attrs: Vec<&str>;
-    match attributes.as_ref() {
-        Some(list) => attrs = list.split(',').collect::<Vec<&str>>(),
-        None => attrs = vec![],
-    }
+    let attrs: Vec<&str> = match attributes.as_ref() {
+        Some(list) => list.split(',').collect::<Vec<&str>>(),
+        None => vec![],
+    };
     let (mut ldap, search_base) = server_connection().await?;
     let start = std::time::Instant::now();
     let (rs, _res) = ldap
