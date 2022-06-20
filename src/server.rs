@@ -35,7 +35,10 @@ pub fn list() -> Result<()> {
 }
 
 pub fn add(name: String) -> Result<()> {
-    let mut config = load_config()?;
+    let mut config = match load_config() {
+        Ok(cfg) => cfg,
+        Err(_err) => crate::config::Config::new(),
+    };
     if config.servers.iter().any(|item| item.name == name) {
         return Err(eyre!(
             "You already saved a server named '{}'. Please choose a different name.",

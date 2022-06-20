@@ -12,6 +12,15 @@ pub struct Config {
     pub servers: Vec<ServerConfig>,
 }
 
+impl Config {
+    pub fn new() -> Self {
+        Config {
+            current: String::from("none"),
+            servers: vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub host: String,
