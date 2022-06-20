@@ -12,15 +12,6 @@ pub struct Config {
     pub servers: Vec<ServerConfig>,
 }
 
-impl Config {
-    pub fn new() -> Self {
-        Config {
-            current: String::from("none"),
-            servers: vec![],
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub host: String,
@@ -31,41 +22,50 @@ pub struct ServerConfig {
     pub user: String,
 }
 
+impl Config {
+    pub fn new() -> Self {
+        Config {
+            current: String::from("none"),
+            servers: vec![],
+        }
+    }
+
+    pub fn exists() -> Result<bool> {
+        Ok(config_path()?.join("config").exists())
+    }
+
+    pub fn load() -> Result<Config> {
+        let path = config_path()?.join("config");
+        let contents = fs::read_to_string(path).wrap_err(format!(
+            "Unable to read config file. Have you added a server with `{}`?",
+            "ldap server add".green().bold()
+        ))?;
+        serde_json::from_str(contents.as_ref()).wrap_err("Unable to parse JSON in config.")
+    }
+
+    pub fn save(&self, password: Option<String>) -> Result<()> {
+        let new_contents = serde_json::to_string_pretty(&self)
+            .wrap_err("Unable to save configuration. Please try again.")?;
+        let path = config_path()?.join("config");
+        fs::write(path, new_contents).wrap_err("Unable to save new server. Please try again.")
+    }
+
+    pub fn current() -> Result<ServerConfig> {
+        let full_config = Self::load()?;
+        Ok(full_config
+            .servers
+            .iter()
+            .find(|item| item.name == full_config.current)
+            .ok_or_else(|| eyre!(
+                "Could not find the server configuration to use. You may need to add a config with `{}` or select a different one with `{}`",
+                "ldap server add".green().bold(),
+                "ldap server use".green().bold()))?
+            .clone())
+    }
+}
+
 fn config_path() -> Result<PathBuf> {
     let user_dirs =
         UserDirs::new().ok_or_else(|| eyre!("Could not find a home directory for you."))?;
     Ok(user_dirs.home_dir().join(".ldap"))
-}
-
-pub fn has_config() -> Result<bool> {
-    Ok(config_path()?.join("config").exists())
-}
-
-pub fn load_config() -> Result<Config> {
-    let path = config_path()?.join("config");
-    let contents = fs::read_to_string(path).wrap_err(format!(
-        "Unable to read config file. Have you added a server with `{}`?",
-        "ldap server add".green().bold()
-    ))?;
-    serde_json::from_str(contents.as_ref()).wrap_err("Unable to parse JSON in config.")
-}
-
-pub fn save_config(config: &Config, password: Option<String>) -> Result<()> {
-    let new_contents = serde_json::to_string_pretty(config)
-        .wrap_err("Unable to save configuration. Please try again.")?;
-    let path = config_path()?.join("config");
-    fs::write(path, new_contents).wrap_err("Unable to save new server. Please try again.")
-}
-
-pub fn current_config() -> Result<ServerConfig> {
-    let full_config = load_config()?;
-    Ok(full_config
-        .servers
-        .iter()
-        .find(|item| item.name == full_config.current)
-        .ok_or_else(|| eyre!(
-            "Could not find the server configuration to use. You may need to add a config with `{}` or select a different one with `{}`",
-            "ldap server add".green().bold(),
-            "ldap server use".green().bold()))?
-        .clone())
 }

@@ -1,4 +1,4 @@
-use crate::config::{current_config, has_config, load_config, save_config, ServerConfig};
+use crate::config::{Config, ServerConfig};
 use color_eyre::{
     eyre::{eyre, Result, WrapErr},
     owo_colors::OwoColorize,
@@ -6,7 +6,7 @@ use color_eyre::{
 use ldap3::{Ldap, LdapConnAsync};
 
 pub async fn server_connection() -> Result<(Ldap, String)> {
-    let config = current_config()?;
+    let config = Config::current()?;
     let (conn, mut ldap) =
         LdapConnAsync::new(format!("ldaps://{}:{}", config.host, config.port).as_ref())
             .await
@@ -23,7 +23,7 @@ pub async fn server_connection() -> Result<(Ldap, String)> {
 }
 
 pub fn list() -> Result<()> {
-    let config = load_config()?;
+    let config = Config::load()?;
     for server in config.servers.iter() {
         if server.name == config.current {
             println!("{}", format!("* {}", server.name).green().bold());
@@ -36,11 +36,11 @@ pub fn list() -> Result<()> {
 
 pub fn add(name: String) -> Result<()> {
     let mut password: Option<String> = None;
-    let mut config = if has_config()? {
-        load_config()?
+    let mut config = if Config::exists()? {
+        Config::load()?
     } else {
         password = Some(prompt_for_password()?);
-        crate::config::Config::new()
+        Config::new()
     };
     if config.servers.iter().any(|item| item.name == name) {
         return Err(eyre!(
@@ -52,13 +52,13 @@ pub fn add(name: String) -> Result<()> {
     config.servers.push(server_config);
     config.servers.sort_by(|a, b| a.name.cmp(&b.name));
     config.current = name.clone();
-    save_config(&config, password)?;
+    config.save(password)?;
     println!("Switched to new server '{}'.", name.green().bold());
     Ok(())
 }
 
 pub fn rm(name: String) -> Result<()> {
-    let mut config = load_config()?;
+    let mut config = Config::load()?;
     let index = config
         .servers
         .iter()
@@ -94,7 +94,7 @@ pub fn rm(name: String) -> Result<()> {
                     println!("There are no more server configurations. Please add one.");
                 }
             }
-            save_config(&config, None)?;
+            config.save(None)?;
         }
         "n" => (),
         _ => {
@@ -105,7 +105,7 @@ pub fn rm(name: String) -> Result<()> {
 }
 
 pub fn switch_to(name: String) -> Result<()> {
-    let mut config = load_config()?;
+    let mut config = Config::load()?;
     if !config.servers.iter().any(|item| item.name == name) {
         return Err(
             eyre!("Unable to find the requested server configuration. Check the name in `{}` or add with `{}`.",
@@ -114,7 +114,7 @@ pub fn switch_to(name: String) -> Result<()> {
         );
     }
     config.current = name.clone();
-    save_config(&config, None)?;
+    config.save(None)?;
     println!("Switched to server '{}'.", name.green().bold());
     Ok(())
 }
