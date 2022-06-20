@@ -34,11 +34,15 @@ pub struct ServerConfig {
 fn config_path() -> Result<PathBuf> {
     let user_dirs =
         UserDirs::new().ok_or_else(|| eyre!("Could not find a home directory for you."))?;
-    Ok(user_dirs.home_dir().join(".ldap").join("config"))
+    Ok(user_dirs.home_dir().join(".ldap"))
+}
+
+pub fn has_config() -> Result<bool> {
+    Ok(config_path()?.join("config").exists())
 }
 
 pub fn load_config() -> Result<Config> {
-    let path = config_path()?;
+    let path = config_path()?.join("config");
     let contents = fs::read_to_string(path).wrap_err(format!(
         "Unable to read config file. Have you added a server with `{}`?",
         "ldap server add".green().bold()
@@ -49,7 +53,7 @@ pub fn load_config() -> Result<Config> {
 pub fn save_config(config: &Config) -> Result<()> {
     let new_contents = serde_json::to_string_pretty(config)
         .wrap_err("Unable to save configuration. Please try again.")?;
-    let path = config_path()?;
+    let path = config_path()?.join("config");
     fs::write(path, new_contents).wrap_err("Unable to save new server. Please try again.")
 }
 
