@@ -50,7 +50,7 @@ pub fn load_config() -> Result<Config> {
     serde_json::from_str(contents.as_ref()).wrap_err("Unable to parse JSON in config.")
 }
 
-pub fn save_config(config: &Config) -> Result<()> {
+pub fn save_config(config: &Config, password: Option<String>) -> Result<()> {
     let new_contents = serde_json::to_string_pretty(config)
         .wrap_err("Unable to save configuration. Please try again.")?;
     let path = config_path()?.join("config");

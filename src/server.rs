@@ -1,4 +1,4 @@
-use crate::config::{current_config, load_config, save_config, ServerConfig};
+use crate::config::{current_config, has_config, load_config, save_config, ServerConfig};
 use color_eyre::{
     eyre::{eyre, Result, WrapErr},
     owo_colors::OwoColorize,
@@ -35,9 +35,12 @@ pub fn list() -> Result<()> {
 }
 
 pub fn add(name: String) -> Result<()> {
-    let mut config = match load_config() {
-        Ok(cfg) => cfg,
-        Err(_err) => crate::config::Config::new(),
+    let mut password: Option<String> = None;
+    let mut config = if has_config()? {
+        load_config()?
+    } else {
+        password = Some(prompt_for_password()?);
+        crate::config::Config::new()
     };
     if config.servers.iter().any(|item| item.name == name) {
         return Err(eyre!(
@@ -49,7 +52,7 @@ pub fn add(name: String) -> Result<()> {
     config.servers.push(server_config);
     config.servers.sort_by(|a, b| a.name.cmp(&b.name));
     config.current = name.clone();
-    save_config(&config)?;
+    save_config(&config, password)?;
     println!("Switched to new server '{}'.", name.green().bold());
     Ok(())
 }
@@ -91,7 +94,7 @@ pub fn rm(name: String) -> Result<()> {
                     println!("There are no more server configurations. Please add one.");
                 }
             }
-            save_config(&config)?;
+            save_config(&config, None)?;
         }
         "n" => (),
         _ => {
@@ -111,7 +114,7 @@ pub fn switch_to(name: String) -> Result<()> {
         );
     }
     config.current = name.clone();
-    save_config(&config)?;
+    save_config(&config, None)?;
     println!("Switched to server '{}'.", name.green().bold());
     Ok(())
 }
@@ -163,4 +166,16 @@ Please specify the following details for server connections:
         search_base: base,
         user,
     })
+}
+
+fn prompt_for_password() -> Result<String> {
+    rpassword::prompt_password(format!(
+        "\
+To begin setup, enter a password to use for unlocking saved servers.
+You will need to reconfigure servers if you lose this password.
+{}
+>",
+        "Password:".blue().bold()
+    ))
+    .wrap_err("Failed to get password")
 }
