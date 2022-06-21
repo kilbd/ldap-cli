@@ -6,6 +6,8 @@ use directories::UserDirs;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
+use crate::lock;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub current: String,
@@ -44,6 +46,13 @@ impl Config {
     }
 
     pub fn save(&self, password: Option<String>) -> Result<()> {
+        match password {
+            Some(pw) => {
+                let (_key, salt) = lock::generate_key(pw)?;
+                println!("{salt:?}")
+            }
+            None => todo!(),
+        }
         let new_contents = serde_json::to_string_pretty(&self)
             .wrap_err("Unable to save configuration. Please try again.")?;
         let path = config_path()?.join("config");
@@ -64,7 +73,7 @@ impl Config {
     }
 }
 
-fn config_path() -> Result<PathBuf> {
+pub fn config_path() -> Result<PathBuf> {
     let user_dirs =
         UserDirs::new().ok_or_else(|| eyre!("Could not find a home directory for you."))?;
     Ok(user_dirs.home_dir().join(".ldap"))
